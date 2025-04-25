@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# Exit on error
+set -e
+
+# Check if image name is provided
+if [ -z "$1" ]; then
+    echo "Error: Please provide an image name"
+    echo "Usage: $0 ghcr.io/<username>/wordpress-custom:tag"
+    exit 1
+fi
+
+# Load environment variables
+if [ -f .env ]; then
+    source .env
+else
+    echo "Error: .env file not found"
+    exit 1
+fi
+
+IMAGE_NAME="$1"
+
+# Check if containers are running
+if ! docker ps | grep -q wp-site; then
+    echo "Error: WordPress container is not running"
+    exit 1
+fi
+
+# Login to GHCR
+echo "Logging in to GitHub Container Registry..."
+echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
+
+# Create a new Dockerfile for the custom image
+cat > Dockerfile.export << EOF
+FROM wordpress:latest
+COPY --from=wp-site:latest /var/www/html /var/www/html
+COPY uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+EOF
+
+# Commit, build, and push WordPress image
+echo "Committing current WordPress container state..."
+docker commit wp-site wp-site:latest
+
+echo "Building WordPress image..."
+docker build -t "${IMAGE_NAME}" -f Dockerfile.export .
+
+echo "Pushing WordPress image to GHCR..."
+docker push "${IMAGE_NAME}"
+
+## Export MySQL database dump
+echo "Exporting MySQL database..."
+docker exec "${WORDPRESS_DB_HOST}" mysqldump -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" > dump.sql
+
+## Build MySQL initialization image with dump
+repo="${IMAGE_NAME%%:*}"
+tag="${IMAGE_NAME#*:}"
+DB_IMAGE_NAME="${repo}-db:${tag}"
+
+cat > Dockerfile.db << EOF
+FROM mysql:lts
+COPY dump.sql /docker-entrypoint-initdb.d/dump.sql
+EOF
+
+echo "Building MySQL initialization image..."
+docker build -t "${DB_IMAGE_NAME}" -f Dockerfile.db .
+
+echo "Pushing MySQL initialization image to GHCR..."
+docker push "${DB_IMAGE_NAME}"
+
+## Cleanup
+rm Dockerfile.export Dockerfile.db dump.sql
+
+echo "Export complete! WordPress image: ${IMAGE_NAME}, MySQL image: ${DB_IMAGE_NAME}"

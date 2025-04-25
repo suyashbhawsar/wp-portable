@@ -46,10 +46,10 @@ docker build -t "${IMAGE_NAME}" -f Dockerfile.export .
 
 echo "Pushing WordPress image to GHCR..."
 docker push "${IMAGE_NAME}"
-
 ## Export MySQL database dump
 echo "Exporting MySQL database..."
-docker exec "${WORDPRESS_DB_HOST}" mysqldump -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" > dump.sql
+# Use root credentials to ensure required privileges for tablespace dump
+docker exec "${WORDPRESS_DB_HOST}" mysqldump -uroot -p"${MYSQL_ROOT_PASSWORD}" --single-transaction --quick "${MYSQL_DATABASE}" > dump.sql
 
 ## Build MySQL initialization image with dump
 repo="${IMAGE_NAME%%:*}"

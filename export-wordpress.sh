@@ -30,20 +30,25 @@ fi
 echo "Logging in to GitHub Container Registry..."
 echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
 
-# Create a new Dockerfile for the custom image
+# Export complete WordPress file tree from the volume
+echo "Exporting WordPress files..."
+# Use a temporary container to tar the wp-site volume (includes themes, plugins, uploads)
+docker run --rm \
+    --volumes-from wp-site \
+    -v "$(pwd)":/backup \
+    busybox \
+    sh -c "cd /var/www/html && tar czf /backup/html.tar.gz ."
+
+# Create a new Dockerfile for the custom image, extracting the HTML content
 cat > Dockerfile.export << EOF
 FROM wordpress:latest
-COPY --from=wp-site:latest /var/www/html /var/www/html
 COPY uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+ADD html.tar.gz /var/www/html/
 EOF
 
-# Commit, build, and push WordPress image
-echo "Committing current WordPress container state..."
-docker commit wp-site wp-site:latest
-
+# Build and push the WordPress image with all file data
 echo "Building WordPress image..."
 docker build -t "${IMAGE_NAME}" -f Dockerfile.export .
-
 echo "Pushing WordPress image to GHCR..."
 docker push "${IMAGE_NAME}"
 ## Export MySQL database dump

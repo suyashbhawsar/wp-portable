@@ -6,7 +6,7 @@ This project provides a set of automated tools to easily set up, customize, expo
 
 - One-command WordPress initialization with Docker
 - GHCR integration for storing and pulling custom WordPress images
-- Export complete WordPress environments (themes, plugins, content, database) via companion MySQL init image
+- Export complete WordPress environments (themes, plugins, uploads, content, database) via tar backup and companion MySQL init image
 - Easy import functionality to clone WordPress sites anywhere
 - Customizable database environment via variables
 - Production-ready PHP configuration
@@ -52,6 +52,7 @@ To export your customized WordPress and its database as Docker images and push t
 ```
 
 This will:
+- Backup all site files (themes, plugins, uploads, etc.) into a tar archive and include them in the WordPress image
 - Push the WordPress image: `ghcr.io/<username>/wordpress-custom:tag`
 - Push the MySQL initialization image: `ghcr.io/<username>/wordpress-custom-db:tag`
 
@@ -64,7 +65,7 @@ To import and run a WordPress site with its database from GHCR:
 
 This will:
 - Pull and run the MySQL initialization image to restore your database
-- Pull and run the WordPress image to serve your site
+- Pull and run the WordPress image (including site files) to serve your site
 
 ## ⚙️ Environment Variables
 

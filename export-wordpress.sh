@@ -44,6 +44,19 @@ cat > Dockerfile.export << EOF
 FROM wordpress:latest
 COPY uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 ADD html.tar.gz /var/www/html/
+RUN if [ ! -f /var/www/html/.htaccess ]; then \
+    printf '%s\n' \
+      '# BEGIN WordPress' \
+      '<IfModule mod_rewrite.c>' \
+      'RewriteEngine On' \
+      'RewriteBase /' \
+      'RewriteRule ^index\\.php$ - [L]' \
+      'RewriteCond %{REQUEST_FILENAME} !-f' \
+      'RewriteCond %{REQUEST_FILENAME} !-d' \
+      'RewriteRule . /index.php [L]' \
+      '</IfModule>' \
+      '# END WordPress' > /var/www/html/.htaccess; \
+  fi
 EOF
 
 # Build and push the WordPress image with all file data

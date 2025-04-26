@@ -53,6 +53,7 @@ To export your customized WordPress and its database as Docker images and push t
 
 This will:
 - Backup all site files (themes, plugins, uploads, etc.) into a tar archive and include them in the WordPress image
+- Auto-generate a default .htaccess (rewrite rules) for pretty permalinks if missing
 - Push the WordPress image: `ghcr.io/<username>/wordpress-custom:tag`
 - Push the MySQL initialization image: `ghcr.io/<username>/wordpress-custom-db:tag`
 
